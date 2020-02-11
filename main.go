@@ -45,25 +45,13 @@ func main() {
 				}
 				defer conn.Close()
 
-				var headSize int
-				var headBytes = make([]byte, 4)
-				headBytes[0] = '$'
-				headBytes[3] = '#'
-
 				buffer := make([]byte, 512)
 				times := 0
 				for {
 					times++
-					s := fmt.Sprintf("Clinet %v say: %v", clientNo, times)
-					content := []byte(s)
-					headSize = len(content)
-					binary.BigEndian.PutUint16(headBytes[1:], uint16(headSize))
-					_, err := conn.Write(headBytes)
-					if err != nil {
-						log.Println(err)
-						return
-					}
-					_, err = conn.Write(content)
+					s := fmt.Sprintf("Clinet [%v] say: %v", clientNo, times)
+
+					err := sendByFixHeader(conn, s)
 					if err != nil {
 						log.Println(err)
 						return
@@ -100,4 +88,78 @@ func main() {
 		}
 		wg.Wait()
 	}
+}
+
+func sendNormal(conn net.Conn, msg string) error {
+	var headSize int
+	var headBytes = make([]byte, 4)
+	headBytes[0] = '$'
+	headBytes[3] = '#'
+
+	content := []byte(msg)
+	headSize = len(content)
+	binary.BigEndian.PutUint16(headBytes[1:], uint16(headSize))
+	_, err := conn.Write(headBytes)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(content)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendByBeginEndMark(conn net.Conn, msg string) error {
+	begin := []byte{'!', '$'}
+	end := []byte{'$', '!'}
+	var headBytes = make([]byte, 4)
+	actionName := []byte("/Say")
+	actionNameLength := len(actionName)
+	content := []byte(msg)
+	binary.BigEndian.PutUint32(headBytes, uint32(actionNameLength))
+	_, err := conn.Write(begin)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(headBytes)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(actionName)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(content)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(end)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendByFixHeader(conn net.Conn, msg string) error {
+	var headBytes = make([]byte, 8)
+	actionName := []byte("/v2/Print")
+	actionNameLength := len(actionName)
+	content := []byte(msg)
+	packageLength := 8 + actionNameLength + len(content)
+	binary.BigEndian.PutUint32(headBytes[:4], uint32(packageLength))
+	binary.BigEndian.PutUint32(headBytes[4:8], uint32(actionNameLength))
+	_, err := conn.Write(headBytes)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(actionName)
+	if err != nil {
+		return err
+	}
+	_, err = conn.Write(content)
+	if err != nil {
+		return err
+	}
+	return nil
 }
