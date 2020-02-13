@@ -46,6 +46,18 @@ func main() {
 				defer conn.Close()
 
 				buffer := make([]byte, 512)
+				go func() {
+					for {
+						n, err := conn.Read(buffer)
+						if err != nil {
+							log.Println("Read failed:", err)
+							return
+						}
+
+						log.Println(fmt.Sprintf("Clinet [%v] receive : %v", clientNo, string(buffer[:n])))
+					}
+				}()
+
 				times := 0
 				for {
 					times++
@@ -57,31 +69,7 @@ func main() {
 						return
 					}
 
-					n, err := conn.Read(buffer)
-					if err != nil {
-						log.Println("Read failed:", err)
-						//break
-					}
-
-					log.Println(fmt.Sprintf("Clinet [%v] receive : %v", clientNo, string(buffer[:n])))
-
 					time.Sleep(time.Duration(rand.Intn(11)) * time.Second)
-
-					//s = fmt.Sprintf("hello golang - %v", clientNo)
-					//content = []byte(s)
-					//headSize = len(content)
-					//binary.BigEndian.PutUint16(headBytes[1:], uint16(headSize))
-					//conn.Write(headBytes)
-					//conn.Write(content)
-					//time.Sleep(time.Duration(rand.Intn(12)) * time.Second)
-					//
-					//s = fmt.Sprintf("hello socket - %v", clientNo)
-					//content = []byte(s)
-					//headSize = len(content)
-					//binary.BigEndian.PutUint16(headBytes[1:], uint16(headSize))
-					//conn.Write(headBytes)
-					//conn.Write(content)
-					//time.Sleep(time.Duration(rand.Intn(12)) * time.Second)
 				}
 			}(i + 1)
 			time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
