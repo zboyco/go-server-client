@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -35,11 +36,13 @@ func main() {
 			wg.Add(1)
 			go func(clientNo int) {
 				defer wg.Done()
-				tcpAddr, err := net.ResolveTCPAddr("tcp4", ":9043")
-				if err != nil {
-					log.Fatalf("Fatal error: %s", err.Error())
-				}
-				conn, err := net.DialTCP("tcp", nil, tcpAddr)
+				//tcpAddr, err := net.ResolveTCPAddr("tcp6", )
+				//if err != nil {
+				//	log.Fatalf("Fatal error: %s", err.Error())
+				//}
+				conn, err := tls.Dial("tcp4", ":9043", &tls.Config{
+					InsecureSkipVerify: true,
+				})
 				if err != nil {
 					log.Fatalf("Fatal error: %s", err.Error())
 				}
@@ -61,6 +64,10 @@ func main() {
 				times := 0
 				for {
 					times++
+					if times == 5 {
+						conn.Close()
+						return
+					}
 					s := fmt.Sprintf("Clinet [%v] say: %v", clientNo, times)
 
 					err := sendByFixHeader(conn, s)
@@ -69,7 +76,7 @@ func main() {
 						return
 					}
 
-					time.Sleep(time.Duration(rand.Intn(11)) * time.Second)
+					time.Sleep(time.Duration(rand.Intn(10)) * time.Second)
 				}
 			}(i + 1)
 			time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
